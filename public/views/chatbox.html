@@ -1,0 +1,24 @@
+
+<div class="chatbox" ng-controller="chatboxCtrl">
+
+	<div class="messages">
+
+		<div ng-repeat="chat in chats">
+			{{chat.player}}: {{chat.message}}
+		</div>
+	</div>
+
+
+	<div class="input">
+
+		<input ng-model="newMessage" autocomplete="off" />
+		<button ng-click="sendChat(newMessage)">Make a Chat</button>
+
+
+	</div>
+
+
+
+</div>
+
+

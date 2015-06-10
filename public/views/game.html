@@ -1,0 +1,35 @@
+<h1>GAME</h1>
+
+
+
+<button ng-click="roll()">Roll</button>
+
+<div class="dice-wrapper">
+	<div class="dice" 
+		ng-repeat="die in dice" 
+		ng-click="toggleHold($index)"
+		ng-class="{hold:die.hold}">
+		{{die.val}}
+	</div>
+</div>
+
+
+<div ng-repeat="scorecard in game.scorecards"> 
+	<h2>{{scorecard.name}}, {{scorecard.id}}</h2>
+	<div ng-repeat="score in scorecard.upperScores" ng-click="submitScore(score)">
+		{{score.name}}, {{tally(score.tally, scorecard.id)}}
+	</div>
+	<div ng-repeat="score in scorecard.upperTotal">
+		{{score.name}}, {{score.score()}}
+	</div>
+	<div ng-repeat="score in scorecard.lowerScores" ng-click="submitScore(score)">
+		{{score.name}}, {{tally(score.tally, scorecard.id)}}
+	</div>
+	<div ng-repeat="score in scorecard.upperTotal">
+		{{score.name}}, {{score.score()}}
+	</div>
+</div>
+
+
+
+<ng-include src="'/views/chatbox.html'"></ng-include>

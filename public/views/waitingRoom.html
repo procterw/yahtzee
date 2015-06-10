@@ -1,0 +1,17 @@
+<h1>{{room.name}}</h1>
+
+<p ng-repeat="player in room.players track by $index">{{player}}</p>
+
+<button ng-click="leaveRoom()">Leave Room</button>
+
+<br>
+
+<button ng-click="isReady()">Start the game bozo</button>
+
+<br>
+
+{{room.playersReady}} of {{room.players.length}} players ready
+
+<br>
+
+<ng-include src="'/views/chatbox.html'"></ng-include>

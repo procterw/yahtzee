@@ -1,0 +1,54 @@
+body {
+	/*background-color: red;*/
+}
+
+/* CHAT */
+
+.chatbox {
+	background-color:rgb(250,250,250);
+	position: fixed;
+	top: 0;
+	right: 0;
+	width: 250px;
+	height: 100%;
+}
+
+.chatbox .input {
+	position: absolute;
+	bottom: 10px;
+	height: 20px;
+}
+
+.chatbox .input input {
+	padding: 0;
+	margin: 0;
+	height: 20px;
+	width: 60%;
+}
+
+.chatbox .input button {
+	padding: 0;
+	margin: 0;
+	height: 20px;
+	width: 35%;
+}
+
+.chatbox.messages {
+	position: relative;
+	height: 100%;
+	margin-bottom: 20px;
+}
+
+/* DICE */
+
+.dice {
+	width: 50px;
+	height: 50px;
+	border: 1px solid rgb(200,200,200);
+	display: inline-block;
+}
+
+.dice.hold {
+	background-color: rgb(70,70,70);
+	color: white;
+}

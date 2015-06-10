@@ -1,0 +1,21 @@
+<h1>Search for Room</h1>
+
+<!-- enter name -->
+name: {{name}}
+<input ng-model="name" autocomplete="off" />
+
+<br>
+<!-- create room -->
+<button ng-click="createRoom(name)">Create Room</button>
+
+<br>
+<!-- join room -->
+<input ng-model="room.name" autocomplete="off" />
+<button ng-click="joinRoom(room.name, name)">Join Room</button>
+
+
+
+
+<div ng-repeat="chat in chats">
+	{{chat.user}}: {{chat.message}}
+</div>
