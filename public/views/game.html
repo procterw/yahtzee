@@ -1,8 +1,8 @@
-<h1>GAME</h1>
+<h4>Current player is {{game.currentPlayer}}</h4>
+<h4>My id is {{game.id}}</h4>
+<h4>The current turn is {{game.turn}}</h4>
 
-
-
-<button ng-click="roll()">Roll</button>
+<button ng-click="roll()" ng-disabled="game.rolls > 2">Roll</button>
 
 <div class="dice-wrapper">
 	<div class="dice" 
@@ -13,16 +13,18 @@
 	</div>
 </div>
 
+{{game.rolls}}
 
-<div ng-repeat="scorecard in game.scorecards"> 
+
+<div class="scorecard" ng-repeat="scorecard in game.scorecards"> 
 	<h2>{{scorecard.name}}, {{scorecard.id}}</h2>
-	<div ng-repeat="score in scorecard.upperScores" ng-click="submitScore(score)">
+	<div ng-class="{scored:score.isScored}" ng-repeat="score in scorecard.upperScores" ng-click="submitScore(score, scorecard.id)">
 		{{score.name}}, {{tally(score.tally, scorecard.id)}}
 	</div>
 	<div ng-repeat="score in scorecard.upperTotal">
 		{{score.name}}, {{score.score()}}
 	</div>
-	<div ng-repeat="score in scorecard.lowerScores" ng-click="submitScore(score)">
+	<div ng-class="{scored:score.isScored}" ng-repeat="score in scorecard.lowerScores" ng-click="submitScore(score, scorecard.id)">
 		{{score.name}}, {{tally(score.tally, scorecard.id)}}
 	</div>
 	<div ng-repeat="score in scorecard.upperTotal">

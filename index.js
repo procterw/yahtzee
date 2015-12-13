@@ -29,6 +29,8 @@ var server = require('http').createServer(app).listen(8080, function() {
 var Room = function() {
   this.players = [];
   this.playersReady = [];
+  this.scores = [];
+  this.gameRunning = false;
 }
 
 // List of open rooms
@@ -46,8 +48,12 @@ io.sockets.on('connection', function (socket) {
 
   console.log("A connection was made!");
 
+  socket.isReady = function() {
+    return rooms[socket.room].playersReady.indexOf(socket.playerID) > -1;
+  }
+
   function rjoin(room, name) {
-    console.log("EY YOU", room, name)
+    console.log(name + " joined room " + room);
     if (!socket.room) {
       socket.playerName = name;
       socket.room = room;
@@ -57,16 +63,16 @@ io.sockets.on('connection', function (socket) {
       // broadcast only to yourself that you joined
       socket.emit('youJoined', room, rooms[room], socket.playerID);
       // broadcast to others that room was joined 
-      socket.broadcast.to(socket.room).emit('playerJoined', room, rooms[room], socket.playerID); 
+      socket.broadcast.to(socket.room).emit('playerJoined', room, rooms[room], socket.playerID);
+      console.log(rooms[room]);
     }
   }
 
   // When a player leaves remove them from the room. Emit the player, 
   // their id, and the new list of players
   function rleave() {
-    console.log("LEAVE IT")
     if (socket.room) {
-      console.log("LEAVE IT")
+      console.log(socket.playerName + " left room " + socket.room);
       socket.leave(socket.room)
       rooms[socket.room].players.splice(socket.playerID-1, 1);
       socket.broadcast.to(socket.room).emit('playerLeft', socket.playerName, socket.playerID, rooms[socket.room].players);
@@ -78,6 +84,7 @@ io.sockets.on('connection', function (socket) {
   socket.on('createRoom', function(name) {
     var room = roomName.gen(Object.keys(rooms));
     rooms[room] = new Room();
+    console.log(name + " created room " + room);
     rjoin(room, name);
   });
 
@@ -95,21 +102,28 @@ io.sockets.on('connection', function (socket) {
   socket.on("disconnect", rleave);
 
   socket.on("isReady", function() {
-    if (!socket.ready) {
-      socket.ready = true;
-      rooms[socket.room].playersReady.push(socket.playerName);
+    if (!socket.isReady()) {
+      rooms[socket.room].playersReady.push(socket.playerID);
       io.sockets.in(socket.room).emit('playerReady', rooms[socket.room].playersReady.length);
       if (rooms[socket.room].playersReady.length === rooms[socket.room].players.length) {
         // Everyone is ready! 
+        rooms[socket.room].playersReady = [];
         var game = new Game(rooms[socket.room].players);
         rooms[socket.room].game = game;
-        io.sockets.in(socket.room).emit('startGame', game);
+        io.sockets.in(socket.room).emit('allReady', game);
+        
       }
     }
   });
 
   socket.on("sendChat", function(message) {
     io.sockets.in(socket.room).emit('chatSent', socket.playerName, message);
+  });
+
+  socket.on("startGame", function() {
+    rooms[socket.room].gameRunning = true;
+    // console.log("sending startGame to ", socket.playerName, ", id=", socket.playerID);
+    socket.emit('gameStarted', rooms[socket.room].game, socket.playerID);
   });
 
   
@@ -122,6 +136,18 @@ io.sockets.on('connection', function (socket) {
 
   socket.on("toggleHold", function(index) {
     socket.broadcast.to(socket.room).emit('holdToggled', index);
+  });
+
+  socket.on("nextTurn", function(id) {
+    id++;
+    if (id > rooms[socket.room].players.length) id = 1;
+    io.sockets.in(socket.room).emit('newTurn', id);
+  });
+
+
+  socket.on("endGame", function(score){
+    rooms[socket.room].scores.push(score);
+    io.sockets.in(socket.room).emit("gameEnded", rooms[socket.room].scores, 0);
   });
 
 });

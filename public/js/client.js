@@ -54,6 +54,8 @@ function($scope, $state) {
 Yahtzee.controller('multiplayerGame',
 function($scope, $state, gameFactory) {
 
+	gameFactory.startGame();
+
 	$scope.room = gameFactory.room;
 	$scope.dice = gameFactory.dice;
 	$scope.roll = gameFactory.roll;
@@ -61,6 +63,8 @@ function($scope, $state, gameFactory) {
 	$scope.game = gameFactory.game;
 	$scope.toggleHold = gameFactory.toggleHold;
 	$scope.tally = gameFactory.tally;
+
+
 
 });
 
@@ -156,12 +160,20 @@ function($state, $rootScope) {
 	vm.room = {
 		name: "",
 		players: [],
+		scores: [],
 		playersReady: 0		
 	}
+
 	vm.createRoom = createRoom;
 	vm.joinRoom = joinRoom;
 	vm.isReady = isReady;
 	vm.leaveRoom = leaveRoom;
+
+	_socket.on("gameEnded", function(scores, playersReady) {
+		vm.room.scores = scores;
+		vm.room.playersReady = playersReady
+		$state.go("waitingRoom");
+	});
 
 	return vm;
 
@@ -177,7 +189,7 @@ function($state, $rootScope) {
 
 		// when somebody else joins a room
 		_socket.on("playerJoined", function(room, roomData) {
-			PF.room.players = roomData.players;
+			vm.room.players = roomData.players;
 			$rootScope.$apply()
 		});
 
@@ -199,12 +211,11 @@ function($state, $rootScope) {
 
 		_socket.on("playerReady", function(playersReady) {
 			vm.room.playersReady = playersReady;
-			_socket.on("startGame", function(game) {
+			_socket.on("allReady", function() {
 				$state.go("multiplayerGame");
 			});
 			$rootScope.$apply()
 		});
-
 
 
 	}
@@ -250,14 +261,24 @@ function($state, $rootScope) {
 Yahtzee.factory("gameFactory",
 function($rootScope, $state, scorecardFactory) {
 
+
+
 	var vm = {};
+
+	vm.startGame = startGame;
+	vm.tally = tally;
+	vm.roll = roll;
+	vm.toggleHold = toggleHold;
+	vm.submitScore = submitScore;
 
 	// Initial game state
 	vm.game = {
-		state: "mainMenu", //TODO what? why
+		players: [],
+		scorecards: [],
 		id: 0,
 		currentPlayer: 1,
 		rolls: 0,
+		turn: 0,
 		isCurrentPlayer: function() {
 			return this.id === this.currentPlayer;
 		}
@@ -272,28 +293,42 @@ function($rootScope, $state, scorecardFactory) {
   ];
 
   _socket.on("newTurn", function(id) {
-		
+		vm.game.currentPlayer = id;
+		resetDie();
+	  vm.game.rolls = 0;
+	  vm.game.turn++;
+		$rootScope.$apply();
 	});
 
 	_socket.on("holdToggled", function(i) {
-  	PF.dice[i].hold = !PF.dice[i].hold;
+  	vm.dice[i].hold = !vm.dice[i].hold;
   	$rootScope.$apply();
   });
 
   _socket.on("diceRolled", function(dice) {
   	for (var i=0; i<dice.length; i++) {
-  		PF.dice[i].val = dice[i].val;
-  		PF.dice[i].hold = dice[i].hold;
+  		vm.dice[i].val = dice[i].val;
+  		vm.dice[i].hold = dice[i].hold;
   	}
+  	vm.game.rolls++;
   	$rootScope.$apply();
   });
 
-  _socket.on("startGame", function(game) {
-		$state.go("multiplayerGame");
+  // Triggers when the game has started
+  _socket.on("gameStarted", function(game, id) {
+  	console.log(game, id);
+  	vm.game.scorecards = [];
+  	vm.game.rolls = 0;
+  	vm.game.turn = 0;
+  	vm.game.id = id;
+  	vm.game.currentPlayer = 1;
 		for (var i=0; i < game.players.length; i++) {
-			vm.game.scorecards.push(new scorecardFactory.scorecard(game.players[i],i+1))
+  		vm.game.players = game.players;
+			vm.game.scorecards.push(new scorecardFactory.scorecard(game.players[i],i+1));
 		}
+		$rootScope.$apply();
 	});
+
 
   return vm;
 
@@ -319,104 +354,46 @@ function($rootScope, $state, scorecardFactory) {
   	_socket.emit("toggleHold", i);
   }
 
-  
-  function submitScore(score) {
-  	if (!vm.game.isCurrentPlayer()) return;
-  	 score.score = score.tally();
-     score.isScored = true;
-  		// _socket.emit("submitScore");
+
+  function startGame(game) {
+  	_socket.emit("startGame");
   }
 
-
-
-})
-
-
-
-
-
-
-// Yahtzee.factory("roomFactory", function($rootScope, $state, scorecardFactory) {
-
-
-
   
+  function submitScore(score, id) {
+  	if (!vm.game.isCurrentPlayer()) return;
+  	if (vm.game.id !== id) return;
+  	if (score.isScored) return;
+  	score.score = score.tally(vm.dice);
+    score.isScored = true;
+    vm.game.turn >= (13 * vm.game.players.length)-1 ? endGame() : nextTurn();
+  }
 
-// 	PF.name = "";
+  function nextTurn() {
+  	_socket.emit("nextTurn", vm.game.currentPlayer);
+  	vm.game.currentPlayer = null;
+  }
 
-// 	// Only the player currently up can see tallied scores
-	
+  function resetDie() {
+  	for (i=0;i<vm.dice.length;i++) {
+  		vm.dice[i].value = 0;
+  		vm.dice[i].hold = false;
+  	}
+  }
 
-	
+  function endGame() {
+  	scores = [];
+  	for (var i=0; i<vm.game.scorecards.length; i++) {
+  		scores[i] = vm.game.scorecards[i].lowerTotal[1].score();
+  	}
+  	_socket.emit("endGame", scores);
+  }
 
-// 	// Only the current player can roll
-//   PF.roll = function() {
-//   	if (!PF.game.isCurrentPlayer()) return;
-//   	for (var i=0; i<PF.dice.length; i++) {
-//   		if (!PF.dice[i].hold) PF.dice[i].val = Math.floor(Math.random() * 6) + 1;
-//   	}
-//   	PF.game.rolls++;
-//   	_socket.emit("rollDice", PF.dice);
-//   }
-
-//   // Only the current player can toggle hold
-//   PF.toggleHold = function(i) {
-//   	if (!PF.game.isCurrentPlayer()) return;
-//   	PF.dice[i].hold = !PF.dice[i].hold;
-//   	_socket.emit("toggleHold", i);
-//   }
-
-//   // Only the current player can submit a score
-//   PF.submitScore = function(score) {
-//   	if (!PF.game.isCurrentPlayer()) return;
-//   	 score.score = score.tally();
-//      score.isScored = true;
-//   		// _socket.emit("submitScore");
-//   }
-
-
-// 	_socket.on("newTurn", function(id) {
-		
-// 	});
-
-// 	_socket.on("holdToggled", function(i) {
-//   	PF.dice[i].hold = !PF.dice[i].hold;
-//   	$rootScope.$apply();
-//   });
+});
 
 
 
 
-// 	// somebody else rolled
-//   _socket.on("diceRolled", function(dice) {
-//   	for (var i=0; i<dice.length; i++) {
-//   		PF.dice[i].val = dice[i].val;
-//   		PF.dice[i].hold = dice[i].hold;
-//   	}
-//   	$rootScope.$apply();
-//   });
-
-
-
-
-
-	// Join after joining or creating a room, set a bunch of 
-	// listeners for player and room behavior
-	
-
-
-
-
-
-	// Emits a roll event with new dice values
-	// This includes which dice are locked
-	// PF.roll = function(roll) {
-	// 	_socket.emit(roll);
-	// };
-
-// 	return PF;
-
-// });
 
 
 // Provides functions for 

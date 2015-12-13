@@ -52,3 +52,15 @@ body {
 	background-color: rgb(70,70,70);
 	color: white;
 }
+
+/* SCORECARD */
+
+.scorecard {
+	display: inline-block;
+	padding: 10px;
+}
+
+.scorecard .scored {
+	background-color: #DDD;
+}
+

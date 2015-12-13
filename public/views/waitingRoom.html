@@ -2,6 +2,10 @@
 
 <p ng-repeat="player in room.players track by $index">{{player}}</p>
 
+<div ng-repeat="game in room.scores">
+	<span ng-repeat="scores in game">{{scores}},</span>
+</div>
+
 <button ng-click="leaveRoom()">Leave Room</button>
 
 <br>
